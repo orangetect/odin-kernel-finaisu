@@ -1,0 +1,10 @@
+# build artifacts / local scratch
+out/
+artifact/
+*.zip
+*.tar.gz
+*.log
+
+# editor / OS
+.DS_Store
+Thumbs.db
