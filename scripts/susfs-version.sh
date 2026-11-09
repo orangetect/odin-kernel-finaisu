@@ -1,10 +1,10 @@
 #!/bin/bash
-# susfs-version.sh - 让内核 SUSFS 如实汇报 v2.3.0 wire 协议（匹配 FinaSU v1.4.2）
+# susfs-version.sh - 让内核 SUSFS 如实汇报 v2.3.0 wire 协议（匹配 FinaSU v1.5.0）
 #
-# 背景：FinaSU v1.4.2 的 ksud（userspace/ksud/src/susfs/mod.rs classify()）
+# 背景：FinaSU v1.5.0 的 ksud（userspace/ksud/src/susfs/mod.rs classify()）
 # 硬性要求内核 SUSFS 版本字符串**精确等于 "v2.3.0"**，否则判定
 # unknown_protocol，管理器所有 SUSFS 功能只读不可用（「未知协议」）。
-# 而 miyume 5.4 树自带的是 SUSFS v2.1.0。
+# 而 odin（resukisu 分支）5.4 树自带的是 SUSFS v2.1.0。
 #
 # 经逐项对比，v2.1.0 与 v2.3.0 的 userspace<->kernel 协议完全兼容：
 #   - 23 个 CMD_SUSFS_* 命令编号逐一相同
@@ -23,7 +23,7 @@ KDIR="${1:?usage: susfs-version.sh <kernel-dir>}"
 H="$KDIR/include/linux/susfs.h"
 [ -f "$H" ] || { echo "ERROR: $H not found" >&2; exit 1; }
 
-echo "=== [susfs-version] report v2.3.0 wire protocol (FinaSU v1.4.2 requirement) ==="
+echo "=== [susfs-version] report v2.3.0 wire protocol (FinaSU v1.5.0 requirement) ==="
 
 # 1) 版本字符串 v2.1.0 -> v2.3.0
 if grep -q '#define SUSFS_VERSION "v2.3.0"' "$H"; then
