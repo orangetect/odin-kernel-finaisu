@@ -114,7 +114,7 @@ jobs:
           bash ../ci/scripts/sched-tune.sh "$PWD"
 
           ./scripts/config --file out/.config \
-            --enable KPROBES --enable KSU --enable KSU_SUSFS \
+            --enable KPROBES --enable KSU --enable KSU_HOOK_TRACEPOINT --enable KSU_SUSFS \
             --enable KSU_SUSFS_SUS_PATH --enable KSU_SUSFS_SUS_MOUNT \
             --enable KSU_SUSFS_SUS_KSTAT --enable KSU_SUSFS_SPOOF_UNAME \
             --enable KSU_SUSFS_ENABLE_LOG --enable KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
@@ -132,7 +132,7 @@ jobs:
           grep -E 'CONFIG_KSU|CONFIG_SUSFS|CONFIG_KPROBES|CONFIG_THREAD_INFO' out/.config || true
 
           MISSING=0
-          for sym in CONFIG_KSU CONFIG_KSU_SUSFS CONFIG_KSU_SUSFS_SUS_PATH \
+          for sym in CONFIG_KSU CONFIG_KSU_HOOK_TRACEPOINT CONFIG_KSU_SUSFS CONFIG_KSU_SUSFS_SUS_PATH \
                      CONFIG_KSU_SUSFS_SUS_MOUNT CONFIG_KSU_SUSFS_SUS_MAP \
                      CONFIG_KSU_SUSFS_OPEN_REDIRECT CONFIG_KPROBES; do
             if ! grep -qx "$sym=y" out/.config; then

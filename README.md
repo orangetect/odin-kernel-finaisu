@@ -103,6 +103,9 @@ FinaSU 基线面向 5.10+，5.4 vendor 树缺头文件与 API。`scripts/preflig
 > odin 树没有 `fs/devpts/inode.c` 的 `ksu_handle_devpts` 调用点，因此
 > `susfs-setup.sh` step 8 与 `preflight.sh` 的 devpts stub 会自动跳过；
 > 这不会降低功能，只是少一个 5.4 上的已知死代码。
+>
+> 构建时显式 `--enable KSU_HOOK_TRACEPOINT`：FinaSU 在 5.4 上只能用
+> tracepoint 后端，`KSU_HOOK_SUSFS_INLINE` 会 panic（venus 已实机复现）。
 
 ### 二、SUSFS 版本对齐
 
@@ -232,7 +235,7 @@ su -c 'sh /sdcard/Download/collect-logs.sh'
 | `susfs-setup.sh`（v2.1.0 树） | 在 odin 文件集上跑通，SUSFS 别名 / SELinux / mount / uname 步骤全部完成 |
 | `susfs-version.sh` | v2.1.0 → v2.3.0、ctime 笔误修正通过 |
 | `susfs-uname-proc.sh` | `fs/proc/version.c`、`kernel/utsname_sysctl.c` 锚点匹配 |
-| `preflight.sh` | 全部检查 PASS；devpts 步骤因 odin 树无调用点而按预期 SKIP |
+| `preflight.sh` | 默认 / `disable_preinit=true` / `disable_susfs=true` 三种变体全部 PASS；devpts 步骤因 odin 树无调用点而按预期 SKIP |
 | `ksu-su-fallback.sh` | `sucompat.c` 锚点匹配，补丁成功 |
 | `odin_defconfig` | `KSU=y`、`KSU_SUSFS*`、`KPROBES`、`EXT4_FS`、`THREAD_INFO_IN_TASK`、`OVERLAY_FS`、`MODULES` 均存在 |
 | workflow YAML | `python -c yaml.safe_load` 语法检查通过 |

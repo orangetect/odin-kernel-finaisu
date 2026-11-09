@@ -175,7 +175,7 @@ jobs:
           make -j$(nproc) O=out odin_defconfig
           if [ "${{ inputs.disable_susfs || 'false' }}" = "true" ]; then
             ./scripts/config --file out/.config \
-              --enable KPROBES --enable KSU --enable KSU_DYNAMIC_MANAGER \
+              --enable KPROBES --enable KSU --enable KSU_HOOK_TRACEPOINT --enable KSU_DYNAMIC_MANAGER \
               --disable KSU_SUSFS --disable KSU_SUSFS_SUS_PATH \
               --disable KSU_SUSFS_SUS_MOUNT --disable KSU_SUSFS_SUS_KSTAT \
               --disable KSU_SUSFS_SPOOF_UNAME --disable KSU_SUSFS_ENABLE_LOG \
@@ -184,7 +184,7 @@ jobs:
               --disable KSU_SUSFS_OPEN_REDIRECT --disable KSU_SUSFS_SUS_MAP
           else
             ./scripts/config --file out/.config \
-              --enable KPROBES --enable KSU --enable KSU_SUSFS \
+              --enable KPROBES --enable KSU --enable KSU_HOOK_TRACEPOINT --enable KSU_SUSFS \
               --enable KSU_SUSFS_SUS_PATH --enable KSU_SUSFS_SUS_MOUNT \
               --enable KSU_SUSFS_SUS_KSTAT --enable KSU_SUSFS_SPOOF_UNAME \
               --enable KSU_SUSFS_ENABLE_LOG --enable KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
@@ -226,7 +226,7 @@ jobs:
 
           if [ "${{ inputs.disable_susfs || 'false' }}" = "true" ]; then
             ./scripts/config --file out/.config \
-              --enable KPROBES --enable KSU --enable KSU_DYNAMIC_MANAGER \
+              --enable KPROBES --enable KSU --enable KSU_HOOK_TRACEPOINT --enable KSU_DYNAMIC_MANAGER \
               --disable KSU_SUSFS --disable KSU_SUSFS_SUS_PATH \
               --disable KSU_SUSFS_SUS_MOUNT --disable KSU_SUSFS_SUS_KSTAT \
               --disable KSU_SUSFS_SPOOF_UNAME --disable KSU_SUSFS_ENABLE_LOG \
@@ -235,7 +235,7 @@ jobs:
               --disable KSU_SUSFS_OPEN_REDIRECT --disable KSU_SUSFS_SUS_MAP
           else
             ./scripts/config --file out/.config \
-              --enable KPROBES --enable KSU --enable KSU_SUSFS \
+              --enable KPROBES --enable KSU --enable KSU_HOOK_TRACEPOINT --enable KSU_SUSFS \
               --enable KSU_SUSFS_SUS_PATH --enable KSU_SUSFS_SUS_MOUNT \
               --enable KSU_SUSFS_SUS_KSTAT --enable KSU_SUSFS_SPOOF_UNAME \
               --enable KSU_SUSFS_ENABLE_LOG --enable KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
@@ -261,7 +261,7 @@ jobs:
           grep -E 'CONFIG_KSU|CONFIG_SUSFS|CONFIG_KPROBES|CONFIG_THREAD_INFO' out/.config || true
 
           MISSING=0
-          SYMS="CONFIG_KSU CONFIG_KPROBES"
+          SYMS="CONFIG_KSU CONFIG_KPROBES CONFIG_KSU_HOOK_TRACEPOINT"
           if [ "${{ inputs.disable_susfs || 'false' }}" != "true" ]; then
             SYMS="$SYMS CONFIG_KSU_SUSFS CONFIG_KSU_SUSFS_SUS_PATH \
                   CONFIG_KSU_SUSFS_SUS_MOUNT CONFIG_KSU_SUSFS_SUS_MAP \
