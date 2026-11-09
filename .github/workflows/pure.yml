@@ -8,7 +8,7 @@ on:
         required: false
         default: 'Inkypen79/kernel_xiaomi_odin'
       kernel_ref:
-        description: 'kernel source ref'
+        description: 'kernel source ref (resukisu required: ships SUSFS + KSU hooks)'
         required: false
         default: 'resukisu'
 

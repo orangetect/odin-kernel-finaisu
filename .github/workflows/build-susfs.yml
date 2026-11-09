@@ -12,7 +12,7 @@ on:
         required: false
         default: 'Inkypen79/kernel_xiaomi_odin'
       kernel_ref:
-        description: 'kernel source ref'
+        description: 'kernel source ref (resukisu required: ships SUSFS + KSU hooks)'
         required: false
         default: 'resukisu'
       disable_preinit:
@@ -369,6 +369,7 @@ jobs:
           ui_print "  ksud   : $KSUD_STATE";
           ui_print "  source : kernel_xiaomi_odin @ resukisu";
           ui_print "  base   : ported from venus-kernel-finaisu";
+          ui_print "  note   : boot only; vendor_boot modules untouched";
           ui_print " ";
           AK3EOF
           

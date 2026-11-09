@@ -42,6 +42,9 @@ CI 会把该分支里的 `KernelSU/` 子模块整体替换成 FinaSU，`drivers/
 3. 进 **TWRP** 刷入（或支持 AnyKernel3 的内核刷写 App）
 4. 重启，打开 **FinaSU v1.5.0** 管理器 —— 首屏显示「工作中」即完成
 
+> 建议在**用同一棵 `kernel_xiaomi_odin` 源码编译的 ROM** 上使用；跨 ROM 刷 boot 时
+> vendor_boot / vendor 里的内核模块可能因 vermagic 不匹配而加载失败（见「风险与限制」）。
+
 **管理器版本要对上**：内核编入的是 FinaSU v1.5.0 的管理器签名与协议版本，
 管理器 APK 与内核不匹配时会表现为「不识别 / 只读」。
 
@@ -217,9 +220,24 @@ su -c 'sh /sdcard/Download/collect-logs.sh'
 ## 风险与限制
 
 - **未在 MIX 4 实机验证**：本仓库只完成静态验证（补丁可应用、脚本可在 odin 树跑通、配置门禁符号存在）。
+- **ROM / vendor_boot 依赖（MIX 4 尤其重要）**：
+  MIX 4 的 `vendor_boot` 里带首阶段内核模块（设备树 `BOOT_KERNEL_MODULES`：
+  `msm_drm.ko`、`fts_touch_spi.ko`、`hwid.ko`、`xiaomi_touch.ko`），
+  它们是**按 ROM 自己的内核版本 / vermagic 编译**的。本仓库的 AK3 只替换 `boot` 里的 kernel，
+  不会更新 `vendor_boot` 里的模块；如果 ROM 内核版本与本内核（5.4.302 + `Neko-CL` 后缀）不一致，
+  这些模块可能因 vermagic 不匹配而加载失败，表现为黑屏 / 无触摸。
+  推荐在**用同一棵 `kernel_xiaomi_odin` 源码编译的 ROM** 上刷入，或自行把匹配的 .ko 重新打进
+  `vendor_boot`；只刷 boot 的包不保证跨 ROM 可用。
 - **ROM 依赖**：内核与 ROM 的 vendor / dtbo 强相关。设备树基线是 LineageOS 23.2；跨大版本 ROM 升级后可能需要重刷或回退。
 - **boot header v3**：AK3 只替换 boot 里的 kernel，保留原机 DTB 与 ramdisk；`dtbo` 分区不动。
   如果 ROM 的 dtbo 与内核版本不匹配，可能出现相机 / 显示异常，需刷回原厂 boot。
+- **AVB / Bootloader**：需要解锁 Bootloader。原厂 AVB 校验可能拒绝未签名的 boot；
+  Lineage 等自编译 ROM 通常已处理 vbmeta，本包不修改 `vbmeta`。
+- **工具链与 defconfig 的落差**：`odin_defconfig` 由 Android clang r574158（21）生成，
+  且开启了 `CONFIG_LTO_CLANG` / `CONFIG_CFI_CLANG`；本仓库沿用 venus 的 ZyC clang 14.0.6
+  （ZyC 没有 21 的发布包）。clang 14 支持 5.4 的 ThinLTO/CFI，但如果 CI 在 LTO/CFI 阶段报错，
+  优先换匹配的 clang 21 工具链，而不是直接关掉 CFI——ROM 侧的 `msm_drm.ko` 等模块可能是
+  按 CFI 编译的，关掉 CFI 会导致模块加载失败。
 - **SUSFS 协议**：内核汇报 v2.3.0，但内核实现是 v2.1.0；FinaSU v1.5.0 管理器的 SUSFS 页应可读写。
 - **历史 workflow** 里的 v1.2.1 签名 / 管理器组合仅作参考，不要与主线 v1.5.0 混用。
 
