@@ -422,6 +422,39 @@ print("selinux_hide.c: 5.4 backport applied (reuse in-kernel selinux services)")
 print("selinux_hide.c: status_lock/status_page remapped to selinux_state.ss->*")
 SIHEOF
 fi
+echo "=== [SUSFS] step 4f: 5.4 phys_from_virt must recognize block PMDs ==="
+PM54="$SUDIR/hook/arm64/patch_memory.c"
+if [ -f "$PM54" ] && ! grep -q 'ksu54_pmd_sect' "$PM54"; then
+python3 - "$PM54" <<'PM54EOF'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding="utf-8").read()
+old = '''    pmd = pmd_offset(pud, addr);
+#if defined(pmd_leaf)
+    if (pmd_leaf(*pmd)) {
+        return __pmd_to_phys(*pmd) + ((addr & ~PMD_MASK));
+    }
+#endif
+'''
+new = '''    pmd = pmd_offset(pud, addr);
+#if defined(pmd_leaf)
+    if (pmd_leaf(*pmd)) {
+        return __pmd_to_phys(*pmd) + ((addr & ~PMD_MASK));
+    }
+#elif defined(pmd_sect)
+    /* ksu54_pmd_sect: 5.4 has no pmd_leaf(); pmd_bad() treats a block PMD
+     * as bad, so sys_call_table patching failed and ksud never started. */
+    if (pmd_sect(*pmd)) {
+        return __pmd_to_phys(*pmd) + ((addr & ~PMD_MASK));
+    }
+#endif
+'''
+if old not in s:
+    sys.exit("patch_memory54: pmd block not found (upstream changed?)")
+io.open(p, "w", encoding="utf-8").write(s.replace(old, new, 1))
+print("patch_memory.c: 5.4 block-PMD mapping added")
+PM54EOF
+fi
 echo "=== [SUSFS] step4g: native-type oracle filter (snapshot pre-KSU policy types) ==="
 # 春秋/DirtySepolicy 的 context oracle 探测：KSU 注入的 type（含随机化后的 ksu_file、ksu 域）
 # 在原生 policy 里根本不存在 -> 三个 write 入口一律按"不存在"返回 -EINVAL。
