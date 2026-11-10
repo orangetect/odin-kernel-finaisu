@@ -33,6 +33,22 @@ CI 会把该分支里的 `KernelSU/` 子模块整体替换成 FinaSU，`drivers/
 
 > `susfs` / `sukisu` 分支也带 SUSFS，但默认只维护 `resukisu`；需要时可在 workflow 里改 `kernel_ref` 输入。
 
+### 为什么从 BakaSU 切回 FinaSU tracepoint
+
+BakaSU 的 SUSFS 只能走 inline 后端，而 inline 在 odin 5.4 上实测：
+
+- `susfs_inline`（完整）→ 小米 logo 后无限重启
+- `susfs_inline_min`（关闭全部 SUSFS 功能，只留 inline 后端）→ 同样无限重启
+
+说明 inline 后端本身在 5.4 不可用。FinaSU 的 **tracepoint** 后端不依赖 SUSFS inline 调用点，
+venus 同平台已实机验证可用，因此改用 FinaSU v1.5.1 + tracepoint 来同时拿到 root 和 SUSFS。
+
+### 管理器版本对齐
+
+内核默认按 **FinaSU v1.5.1** 构建，AK3 内嵌同版本 `libksud.so`，签名第二槽按 v1.5.1 管理器对齐。
+FinaSU 发布新版本时，把 workflow 的 `ksu_ref` 改成新 tag 重新构建即可，内核、ksud、管理器保持同一版本线；
+若只升级管理器而不重编内核，会出现「不识别 / 只读」。
+
 ---
 
 ## 快速开始
@@ -40,12 +56,12 @@ CI 会把该分支里的 `KernelSU/` 子模块整体替换成 FinaSU，`drivers/
 1. 到 **Actions** 手动运行 `Build odin kernel with FinaSU (SUSFS on, preflight v2)`（即 `build-susfs.yml`）
 2. 下载 artifact `odin-finaus-kernel`，或直接取 Release 里的 `odin-FinaSU-*.zip`
 3. 进 **TWRP** 刷入（或支持 AnyKernel3 的内核刷写 App）
-4. 重启，打开 **FinaSU v1.5.0** 管理器 —— 首屏显示「工作中」即完成
+4. 重启，打开 **FinaSU v1.5.1** 管理器 —— 首屏显示「工作中」即完成
 
 > 建议在**用同一棵 `kernel_xiaomi_odin` 源码编译的 ROM** 上使用；跨 ROM 刷 boot 时
 > vendor_boot / vendor 里的内核模块可能因 vermagic 不匹配而加载失败（见「风险与限制」）。
 
-**管理器版本要对上**：内核编入的是 FinaSU v1.5.0 的管理器签名与协议版本，
+**管理器版本要对上**：内核编入的是 FinaSU v1.5.1 的管理器签名与协议版本，
 管理器 APK 与内核不匹配时会表现为「不识别 / 只读」。
 
 **确认刷的是自编内核**：`uname -r` 形如 `5.4.302-Neko-CL-<日期>-<随机>`；
@@ -112,7 +128,7 @@ FinaSU 基线面向 5.10+，5.4 vendor 树缺头文件与 API。`scripts/preflig
 
 ### 二、SUSFS 版本对齐
 
-`resukisu` 分支自带 **SUSFS v2.1.0** 源码；FinaSU v1.5.0 的 ksud 要求内核汇报
+`resukisu` 分支自带 **SUSFS v2.1.0** 源码；FinaSU v1.5.1 的 ksud 要求内核汇报
 `v2.3.0`，否则判定 `unknown_protocol`（SUSFS 页只读）。`scripts/susfs-version.sh`
 把版本字符串改成 `v2.3.0`，并修正 `KSTAT_SPOOF_CTIME_TV_SEC (1 < 8)` 笔误。
 两者用户态协议（`CMD_SUSFS_*`、`st_susfs_*` 结构）一致。
@@ -126,7 +142,7 @@ FinaSU 基线面向 5.10+，5.4 vendor 树缺头文件与 API。`scripts/preflig
 
 ### 四、ksud 处理
 
-- 默认 `embed_ksud=true`：从 FinaSU v1.5.0 APK 抽 `libksud.so`，AK3 刷入时覆盖
+- 默认 `embed_ksud=true`：从 FinaSU v1.5.1 APK 抽 `libksud.so`，AK3 刷入时覆盖
   设备上的 `/data/adb/ksud`，避免旧 ksud 与新管理器版本不匹配导致的后台重试耗电；
 - `embed_ksud=false`：删除设备旧版，由管理器首次启动自行安装；
 - 内核侧 `scripts/ksu-su-fallback.sh` 在 ksud 缺失时把 `su` 指向 `/system/bin/sh`，保证首次刷入能拿到 root shell。
@@ -154,7 +170,7 @@ FinaSU 基线面向 5.10+，5.4 vendor 树缺头文件与 API。`scripts/preflig
 
 | 文件 | 作用 |
 |---|---|
-| `build-susfs.yml` | **主线**：FinaSU v1.5.0 + SUSFS + preflight v2 + 功耗调优 + 默认内嵌 ksud；发布 `odin-test-<n>` |
+| `build-susfs.yml` | **主线**：FinaSU v1.5.1 + SUSFS + preflight v2 + 功耗调优 + 默认内嵌 ksud；发布 `odin-test-<n>` |
 | `pure.yml` | 不含 root/SUSFS 的纯内核，用于排查基线 / 工具链 / 模块 vermagic |
 | `pack.yml` / `pack-pure.yml` | 对已有 run 的 artifact 重新打 AnyKernel3 包 |
 | `build.yml` / `fix.yml` / `fix-v121.yml` | 上游历史构建线，保留作参考（仍按 odin 配置运行） |
@@ -172,7 +188,7 @@ clone kernel (resukisu) → sched-tune → 克隆 FinaSU 覆盖 KernelSU/
 ### 常用输入
 
 - `kernel_repo` / `kernel_ref`：默认 `Inkypen79/kernel_xiaomi_odin` / `resukisu`
-- `ksu_ref`：FinaSU ref，默认 `v1.5.0`
+- `ksu_ref`：FinaSU ref，默认 `v1.5.1`
 - `disable_preinit` / `disable_susfs`：诊断开关（二分卡开机 / 卡 logo）
 - `embed_ksud`：是否在 AK3 内嵌匹配版本的 ksud（默认 true）
 
@@ -239,8 +255,8 @@ su -c 'sh /sdcard/Download/collect-logs.sh'
   （ZyC 没有 21 的发布包）。clang 14 支持 5.4 的 ThinLTO/CFI，但如果 CI 在 LTO/CFI 阶段报错，
   优先换匹配的 clang 21 工具链，而不是直接关掉 CFI——ROM 侧的 `msm_drm.ko` 等模块可能是
   按 CFI 编译的，关掉 CFI 会导致模块加载失败。
-- **SUSFS 协议**：内核汇报 v2.3.0，但内核实现是 v2.1.0；FinaSU v1.5.0 管理器的 SUSFS 页应可读写。
-- **历史 workflow** 里的 v1.2.1 签名 / 管理器组合仅作参考，不要与主线 v1.5.0 混用。
+- **SUSFS 协议**：内核汇报 v2.3.0，但内核实现是 v2.1.0；FinaSU v1.5.1 管理器的 SUSFS 页应可读写。
+- **历史 workflow** 里的 v1.2.1 签名 / 管理器组合仅作参考，不要与主线 v1.5.1 混用。
 
 ---
 
