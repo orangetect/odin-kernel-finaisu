@@ -61,6 +61,11 @@ jobs:
           rm -rf kernel/KernelSU
           git clone --depth 1 --branch "${{ inputs.ksu_ref || 'v1.5.1' }}" \
             https://github.com/LyraVoid/FinaSU.git kernel/KernelSU
+          # FinaSU Kbuild computes KSU_VERSION=30000+`git rev-list --count HEAD`.
+          # A depth-1 clone therefore reports 30001 instead of the release's
+          # real version (v1.5.1 = 33177), which makes the matching manager and
+          # ksud refuse to talk to the kernel.  Fetch the real history/tags.
+          git -C kernel/KernelSU fetch --unshallow --tags 2>/dev/null || true
           echo "FinaSU HEAD: $(git -C kernel/KernelSU rev-parse --short HEAD)"
 
       - name: Verify FinaSU source (seccomp API sanity)
@@ -68,6 +73,14 @@ jobs:
           K=kernel/KernelSU/kernel
           echo "FinaSU HEAD: $(git -C kernel/KernelSU rev-parse HEAD)"
           echo "FinaSU tag : $(git -C kernel/KernelSU describe --tags --always 2>/dev/null || echo unknown)"
+          KSU_COMMITS=$(git -C kernel/KernelSU rev-list --count HEAD)
+          KSU_VERSION=$((30000 + KSU_COMMITS))
+          echo "FinaSU commit count: $KSU_COMMITS => KSU_VERSION=$KSU_VERSION"
+          if [ "$KSU_COMMITS" -lt 100 ]; then
+            echo "::error::FinaSU history is shallow (commit count=$KSU_COMMITS); KSU_VERSION would be $KSU_VERSION, not the release version."
+            echo "::error::The manager/ksud will reject this kernel. Ensure 'git fetch --unshallow --tags' ran."
+            exit 1
+          fi
           if [ ! -f "$K/policy/app_profile.c" ]; then
             echo "::error::FinaSU source layout unexpected: $K/policy/app_profile.c missing"
             exit 1
@@ -98,6 +111,11 @@ jobs:
           SIH=kernel/KernelSU/kernel/feature/selinux_hide.c
           if ! grep -q 'security_context_to_sid(&selinux_state' "$SIH"; then
             echo "::error::selinux_hide 5.4 shim for security_context_to_sid_live missing"
+            exit 1
+          fi
+          PM54=kernel/KernelSU/kernel/hook/arm64/patch_memory.c
+          if ! grep -q 'ksu54_pmd_sect' "$PM54"; then
+            echo "::error::patch_memory 5.4 block-PMD fix missing; sys_call_table patching would fail and ksud would never start"
             exit 1
           fi
 
@@ -369,7 +387,12 @@ jobs:
             else
               echo "::warning::APK download failed, AK3 will NOT contain ksud"
             fi
-          else
+          fi
+          if [ "$EMBED_KSUD" = "true" ] && [ ! -f ./ksud ]; then
+            echo "::error::embed_ksud=true but ksud was not extracted; refusing to publish a rootless AK3"
+            exit 1
+          fi
+          if [ "$EMBED_KSUD" != "true" ]; then
             echo "::notice::ksud NOT embedded - kernel-side su fallback test build"
           fi
           # 无论是否内嵌都追加 ksud 处理脚本：
