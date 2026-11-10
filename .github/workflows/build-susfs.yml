@@ -63,6 +63,23 @@ jobs:
             https://github.com/LyraVoid/FinaSU.git kernel/KernelSU
           echo "FinaSU HEAD: $(git -C kernel/KernelSU rev-parse --short HEAD)"
 
+      - name: Verify FinaSU source (seccomp API sanity)
+        run: |
+          K=kernel/KernelSU/kernel
+          echo "FinaSU HEAD: $(git -C kernel/KernelSU rev-parse HEAD)"
+          echo "FinaSU tag : $(git -C kernel/KernelSU describe --tags --always 2>/dev/null || echo unknown)"
+          if [ ! -f "$K/policy/app_profile.c" ]; then
+            echo "::error::FinaSU source layout unexpected: $K/policy/app_profile.c missing"
+            exit 1
+          fi
+          if grep -q 'put_seccomp_filter' "$K/policy/app_profile.c"; then
+            echo "::error::This FinaSU source still calls put_seccomp_filter, which does not exist on 5.4."
+            echo "::error::Use ksu_ref=v1.5.1 (or newer) where app_profile.c uses seccomp_filter_release()."
+            grep -n 'put_seccomp_filter' "$K/policy/app_profile.c" || true
+            exit 1
+          fi
+          grep -n 'seccomp_filter_release' "$K/policy/app_profile.c" || true
+
       - name: Integrate SUSFS 5.4 into FinaSU kernel tree
         run: |
           chmod +x ci/scripts/susfs-setup.sh
@@ -70,6 +87,12 @@ jobs:
           # 数签名），允许它部分失败；preflight 会补齐缺口并在验证阶段兜底。
           KDIR_OVERRIDE="$PWD/kernel" bash ci/scripts/susfs-setup.sh \
             || echo "::warning::susfs-setup partially applied; preflight compensates"
+          # 5.4 没有 put_seccomp_filter()；susfs-setup 的 4c 老逻辑曾把它注入
+          # app_profile.c，导致隐式声明编译失败。这里兜底检查。
+          if grep -rn 'put_seccomp_filter' kernel/KernelSU/kernel/policy/app_profile.c; then
+            echo "::error::susfs-setup injected put_seccomp_filter into app_profile.c (5.4 has no such API)"
+            exit 1
+          fi
 
       # FinaSU v1.4.2 管理器的 ksud 要求内核 SUSFS 版本字符串精确等于 v2.3.0，
       # 否则判定 unknown_protocol（SUSFS 页只读、全功能不可用）。内核树是

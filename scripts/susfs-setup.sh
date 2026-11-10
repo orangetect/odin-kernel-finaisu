@@ -224,32 +224,10 @@ for T in "$SUDIR/manager/dynamic_manager.c" \
     echo "TWA_* -> bool: ${T#$KDIR/}"
   fi
 done
-echo "=== [SUSFS] step 4c: seccomp.filter_count / seccomp_filter_release are 5.9+ ==="
-APF="$SUDIR/policy/app_profile.c"
-if [ -f "$APF" ] && grep -q 'filter_count' "$APF"; then
-  python3 - "$APF" <<'APFEOF'
-import io, sys
-p = sys.argv[1]
-lines = io.open(p, encoding='utf-8').read().split(chr(10))
-out = []
-for l in lines:
-    if 'seccomp.filter_count' in l:
-        out.append('#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)')
-        out.append(l)
-        out.append('#endif')
-    elif l.strip() == 'seccomp_filter_release(fake);':
-        ind = l[:len(l) - len(l.lstrip())]
-        out.append('#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)')
-        out.append(l)
-        out.append('#else')
-        out.append(ind + 'put_seccomp_filter(fake);')
-        out.append('#endif')
-    else:
-        out.append(l)
-io.open(p, 'w', encoding='utf-8').write(chr(10).join(out))
-print('app_profile.c seccomp 5.4 guards added')
-APFEOF
-fi
+echo "=== [SUSFS] step 4c: seccomp filter_count / seccomp_filter_release already exist on 5.4 - skip ==="
+# FinaSU 的 app_profile.c 直接用 seccomp_filter_release(fake)；
+# odin 5.4 的 include/linux/seccomp.h 已声明该函数，且 struct seccomp 有
+# filter_count 字段，不需要注入 put_seccomp_filter()（5.9+ 才有的 API）。
 echo "=== [SUSFS] step 4d: struct selinux_policy is 5.7+, backport to ss->policydb ==="
 SPH="$SUDIR/selinux/sepolicy.h"
 RUL="$SUDIR/selinux/rules.c"
