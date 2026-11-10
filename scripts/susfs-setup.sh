@@ -379,6 +379,11 @@ ADD = r'''
 /* ksu54_selinux_hide_54: Linux 5.4 keeps the live policy in
  * selinux_state.ss->policydb, and its SELinux services take &selinux_state.
  * Reuse them instead of rebuilding the 5.7+ policy/sidtab internals. */
+static int security_context_to_sid_live(const char *scontext, u32 scontext_len, u32 *sid)
+{
+    return security_context_to_sid(&selinux_state, scontext, scontext_len, sid, GFP_KERNEL);
+}
+
 static int security_context_to_sid_with_policy(struct selinux_policy *policy, const char *scontext, u32 scontext_len,
                                               u32 *sid, u32 def_sid, gfp_t gfp_flags, u32 *orig_sid_p, int *orig_rc_p)
 {
